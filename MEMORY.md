@@ -133,7 +133,7 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
 3. **`Invoke-WebRequest` se quedó en 0 bytes** descargando el ZIP del SDK (82 MB) → *Solución:* cancelar el proceso y usar **`curl.exe -L --retry 3`** (funcionó a ~20 MB/s). *Evitar:* `Invoke-WebRequest` con ficheros grandes en PowerShell 5.1.
 4. **`sdkmanager --licenses` con pipe de "y" se colgó** (sin proceso java, sin `licenses/`, sin aviso) → *Solución:* escribir los **hashes de licencia oficiales** directamente en `<sdk>/licenses/android-sdk-license` (y preview/arm-dbt). No hace falta pasar por el prompt.
 5. **`npm run prueba` fallaba en el CI de Linux**: `node node_modules/esbuild/bin/esbuild` en Windows es un script JS pero en Linux es el **binario ELF** → `node` lo ejecutaba como JS (`ELF: command not found`). *Solución:* scripts npm cambiados a **`esbuild ...`** (resuelve `node_modules/.bin`, cross-platform). Local ✅ (13 lógica + 8 i18n). *Lección:* los scripts npm deben usar los bins de `.bin`, no rutas absolutas a `node_modules`.
-6. **El push del fix no disparó el workflow** (no aparecía run nuevo para `481d9dc`; sí existió run para el push anterior que añadía el fichero). *Solución temporal:* lanzado a mano con `gh workflow run despliegue.yml --ref main`. Pendiente de observar en el siguiente push.
+6. **El push del fix no disparó el workflow** (no aparecía run nuevo para el push del fix; sí existía run para el push anterior que añadía el fichero). *Solución temporal:* lanzado a mano con `gh workflow run despliegue.yml --ref main`. Pendiente de observar en el siguiente push.
 7. **Auto-matante:** un filtro `Get-CimInstance ... CommandLine -like '*sdkmanager*'` coincidió con **mi propia shell** (el patrón estaba en mi línea de comando) → exit 255. *Solución:* excluir `$PID`. *Evitar:* filtros por CommandLine que puedan matchear el propio proceso.
 
 **Repositorio y publicación:**
@@ -151,15 +151,15 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
 
 ### 2026-10-05 — Incidencia grave: commit/push "fantasma" (OneDrive + salidas de shell corruptas)
 
-**Síntoma:** la salida de git decía `[main 481d9dc] fix(pruebas)...` y `610fa66..481d9dc main -> main`, pero después:
-- `git reflog` **no tenía ningún registro** de ese commit (solo `612a6c2` y `610fa66`),
-- `HEAD` local aparecía **revertido a `610fa66`** con `package.json` modificado sin commitear,
-- la **API de GitHub** confirmaba que `main` = `610fa66` (el commit nunca existió en el remoto),
+**Síntoma:** la salida de git decía `[main <sha>] fix(pruebas)...` y `<sha>..<sha> main -> main` (los SHAs reales se retiraron después por seguridad), pero después:
+- `git reflog` **no tenía ningún registro** de ese commit (solo los pushes anteriores),
+- `HEAD` local aparecía **revertido al commit anterior** con `package.json` modificado sin commitear,
+- la **API de GitHub** confirmaba que `main` seguía en el commit anterior (el commit nunca existió en el remoto),
 - en consecuencia, los 2 runs de CI anteriores fallaron probando el código **antiguo**.
 
 **Causa probable:** el proyecto vive en **OneDrive** (carpeta del usuario sincronizada con OneDrive) y la sincronización en caliente de los ficheros de `.git` (refs/reflog) puede revertir el estado; además varias salidas de shell de la sesión han salido corruptas (líneas duplicadas/mezcladas), con lo que la salida del commit no es fiable.
 
-**Solución aplicada:** recomitear (`1c99795`) + push y **verificar con la API de GitHub** (`gh api repos/andreu-marbor/tres-en-raya/commits/main --jq .sha` → `1c99795` ✅ triple-check local/remote/API). El push `1c99795` **sí** disparó el workflow automáticamente (run `37293412226`) → el trigger nunca estuvo roto.
+**Solución aplicada:** recomitear + push y **verificar con la API de GitHub** (`gh api repos/andreu-marbor/tres-en-raya/commits/main --jq .sha` ✅ triple-check local/remote/API). Ese push **sí** disparó el workflow automáticamente (run `37293412226`) → el trigger nunca estuvo roto.
 
 **Lecciones (aplicar a futuro):**
 1. **No confiar en la salida de un comando git en esta sesión**: verificar siempre con `git rev-parse` + `gh api .../commits/main` tras cada push.
@@ -259,6 +259,21 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
 - **Causa:** al reescribir `src/ui/lang.ts` se dejó de asignar la clase base **`boton-idioma`** al crear cada botón (`boton.className = 'boton-idioma'`). `pintarSelector()` sí añadía la clase `.activo`, pero la regla CSS es `.boton-idioma.activo` (requiere **ambas** clases), así que nunca coincidía; y sin la clase base tampoco aplicaban anchos, bordes ni `min-height: 44px`.
 - **Solución:** restaurar `boton.className = 'boton-idioma'` en el momento de crear el botón (`.activo` lo sigue alternando `pintarSelector`). El servidor dev con HMR aplica el cambio en caliente.
 - **Evitar a futuro:** al reescribir un componente, comparar siempre con la versión anterior qué clases/atributos CSS se asignaban en la creación; las clases que aparecen en el CSS como `.clase-base.modificador` necesitan que **ambas** estén en el DOM. Añadir una comprobación visual tras cada refactor de UI, no solo `build` + pruebas de lógica (las pruebas actuales no cubren el DOM).
+
+### 2026-10-05 — 🔴 Auditoría de seguridad del repo (petición del usuario) + reescritura del historial
+
+- **Problema reportado por el usuario:** verificar que **ningún fichero subido al repo** contenga su nombre de usuario, rutas completas de su PC ni nada que comprometa la seguridad de su equipo o de la aplicación.
+- **Hallazgos (HEAD, 86 ficheros):** ✅ limpio el código fuente, workflow, README, AGENTS, PLAN, nombres de fichero (sin `local.properties`, keystore, APK/AAB, claves) y datos sensibles varios; ❌ **todo el contenido sucio estaba en `MEMORY.md`**: menciones del nombre de usuario dentro de rutas absolutas, varias rutas locales y la IP privada de la red local.
+- **Solución aplicada:**
+  1. **Sanitizado `MEMORY.md`**: rutas absolutas → `%USERPROFILE%...` / `Program Files\...`, IP local → marcador `<IP-local>`, carpeta de OneDrive descrita sin ruta. Commit con la revisión limpia verificado por API.
+  2. **Auditoría del historial:** los commits antiguos arrastraban usuario, IP privada y la contraseña ya muerta del keystore. Con **0 forks / 0 watchers** (nadie había clonado) y todos los commits del mismo día, el usuario eligió **reescribir el historial**: `git checkout --orphan` con el árbol ya saneado → commit raíz único → `git push --force -u origin main`. CI verde en el nuevo historial.
+  3. **Retirados de `MEMORY.md` los SHAs de los commits viejos**: eran punteros públicos a los objetos huérfanos con los datos; sustituidos por marcadores genéricos.
+  4. **Limpieza local de objetos viejos:** `git reflog expire --expire=now --all` + `git gc --prune=now`.
+- **Evitar a futuro:**
+  - En documentación **nunca** rutas absolutas de usuario ni IPs: usar `%USERPROFILE%`, rutas relativas o marcadores `<...>`.
+  - Antes de cada push, auditar con `git grep -niIF -e '<usuario>' -e '<ruta-absoluta>' -e '<ip-local>' -e '<password>'` (también vale `git show`).
+  - Si se reescriba el historial, retirar también los SHAs citados en la documentación.
+  - GitHub conserva temporalmente los objetos huérfanos hasta su GC; sin SHAs referenciados en ningún sitio público quedan inaccesibles de forma práctica.
 
 **Formato de entrada:**
 
