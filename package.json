@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "prueba": "npm run prueba:logica && npm run prueba:i18n",
     "iconos": "node scripts/generar-iconos.mjs",
-    "prueba:logica": "node node_modules/esbuild/bin/esbuild pruebas/logica.ts --bundle --platform=node --outfile=node_modules/.tmp/logica.mjs --log-level=warning && node node_modules/.tmp/logica.mjs",
-    "prueba:i18n": "node node_modules/esbuild/bin/esbuild pruebas/i18n.ts --bundle --platform=node --outfile=node_modules/.tmp/i18n.mjs --log-level=warning && node node_modules/.tmp/i18n.mjs"
+    "prueba:logica": "esbuild pruebas/logica.ts --bundle --platform=node --outfile=node_modules/.tmp/logica.mjs --log-level=warning && node node_modules/.tmp/logica.mjs",
+    "prueba:i18n": "esbuild pruebas/i18n.ts --bundle --platform=node --outfile=node_modules/.tmp/i18n.mjs --log-level=warning && node node_modules/.tmp/i18n.mjs"
   },
   "devDependencies": {
     "sharp": "^0.35.5",

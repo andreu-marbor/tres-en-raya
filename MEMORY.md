@@ -117,6 +117,38 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
 - **Verificado:** `npm.cmd run build` ✅ · `npm.cmd run preview` ✅ HTTP 200 en `/`, `/manifest.json`, `/sw.js` e iconos.
 - **Pendiente (Fase 6 parte 2) — APK:** el entorno **no tiene** Java, Bubblewrap ni Android SDK (`java`, `bubblewrap`, `ANDROID_HOME` comprobados → no instalados), y la TWA exige hosting **HTTPS**. Guía completa escrita en el README; decisión del usuario sobre instalar prerrequisitos y publicar la web.
 
+### 2026-10-05 — Fase 6 (parte 2): entorno de publicación, repo y GitHub Pages
+
+**Decisión del usuario:** instalar todo y publicar (JDK + Bubblewrap + GitHub Pages → APK con Bubblewrap); las capturas del README las hará él después.
+
+**Instalaciones (todas desde terminal, sin Android Studio):**
+- **JDK 17**: `winget install Microsoft.OpenJDK.17` → `JAVA_HOME=C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot`
+- **Bubblewrap CLI**: `npm.cmd install -g @bubblewrap/cli`
+- **Git 2.55** y **GitHub CLI 2.102**: `winget` → login con device flow → usuario **`andreu-marbor`**
+- **Android SDK** (manual, ver incidencias abajo) en `C:\Users\Alba\.bubblewrap\android_sdk`
+
+**Incidencias y soluciones:**
+1. **`bubblewrap` no arranca en PowerShell** → la política de ejecución bloquea `bubblewrap.ps1` (mismo caso que `npm.ps1`). *Solución:* usar siempre **`bubblewrap.cmd`**. *Evitar:* invocar binarios `.ps1` de npm en este equipo.
+2. **Asistente interactivo de primera vez de Bubblewrap** (stdin cerrado → crash `ERR_USE_AFTER_CLOSE`) → *Solución:* crear `C:\Users\Alba\.bubblewrap\config.json` manualmente con `{"jdkPath","androidSdkPath"}` (los dos únicos campos que lee `Config.deserialize`); `bubblewrap.cmd doctor` ✅ *"Your jdkpath and androidSdkPath are valid"*. Así cualquier comando posterior va sin prompts.
+3. **`Invoke-WebRequest` se quedó en 0 bytes** descargando el ZIP del SDK (82 MB) → *Solución:* cancelar el proceso y usar **`curl.exe -L --retry 3`** (funcionó a ~20 MB/s). *Evitar:* `Invoke-WebRequest` con ficheros grandes en PowerShell 5.1.
+4. **`sdkmanager --licenses` con pipe de "y" se colgó** (sin proceso java, sin `licenses/`, sin aviso) → *Solución:* escribir los **hashes de licencia oficiales** directamente en `<sdk>/licenses/android-sdk-license` (y preview/arm-dbt). No hace falta pasar por el prompt.
+5. **`npm run prueba` fallaba en el CI de Linux**: `node node_modules/esbuild/bin/esbuild` en Windows es un script JS pero en Linux es el **binario ELF** → `node` lo ejecutaba como JS (`ELF: command not found`). *Solución:* scripts npm cambiados a **`esbuild ...`** (resuelve `node_modules/.bin`, cross-platform). Local ✅ (13 lógica + 8 i18n). *Lección:* los scripts npm deben usar los bins de `.bin`, no rutas absolutas a `node_modules`.
+6. **El push del fix no disparó el workflow** (no aparecía run nuevo para `481d9dc`; sí existió run para el push anterior que añadía el fichero). *Solución temporal:* lanzado a mano con `gh workflow run despliegue.yml --ref main`. Pendiente de observar en el siguiente push.
+7. **Auto-matante:** un filtro `Get-CimInstance ... CommandLine -like '*sdkmanager*'` coincidió con **mi propia shell** (el patrón estaba en mi línea de comando) → exit 255. *Solución:* excluir `$PID`. *Evitar:* filtros por CommandLine que puedan matchear el propio proceso.
+
+**Repositorio y publicación:**
+- `git init` (rama `main`), autor genérico **`Andreu <dev@users.noreply.github.com>`** (decisión del usuario: no exponer correo personal). Commit inicial: **43 archivos / 4.883 líneas**.
+- `gh repo create tres-en-raya` (público) → **https://github.com/andreu-marbor/tres-en-raya** (`main` con push OK).
+- **GitHub Pages vía GitHub Actions**: creado `.github/workflows/despliegue.yml` (push a `main` o manual → `npm ci` + `npm run prueba` + `npm run build` + deploy de `dist/`; `permissions: pages: write`; `concurrency: pages`). Pages pasado a `build_type: workflow` → URL **https://andreu-marbor.github.io/tres-en-raya/**.
+- **Keystore de firma** generado con `keytool` (JDK): `./android.keystore`, alias `android`, RSA-2048, validez 10.000 días, contraseña **`TresEnRaya2026`** (almacén + clave). Huella SHA-256 `C0:61:1F:21:47:45:6F:0A:AE:FF:D5:92:4C:91:12:91:7E:2B:87:0E:97:40:4B:B0:A2:A9:B3:D4:EF:06:0E:C9`. `*.keystore` ya está en `.gitignore`. ⚠️ Guardar la contraseña: sin ella no se podrán firmar actualizaciones.
+
+**Pendiente de esta parte:**
+- Ver run de CI en verde + sitio live (comprobar `manifest.json` en la URL de Pages).
+- Instalar paquetes del SDK (`platform-tools`, `platforms;android-36`, `build-tools;36.1.0`) — en curso.
+- `twa-manifest.json` sin prompts: script con `TwaManifest.fromWebManifest()` de `@bubblewrap/core` (sustituye a `bubblewrap init`).
+- `bubblewrap.cmd build` con `BUBBLEWRAP_KEYSTORE_PASSWORD` / `BUBBLEWRAP_KEY_PASSWORD` en el entorno (evita los prompts de contraseña de `build.js`).
+- Subir APK/AAB como release del repo.
+
 ---
 
 ## 🐛 Problemas encontrados y soluciones
