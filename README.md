@@ -91,6 +91,21 @@ bubblewrap build
 
 > 💡 Alternativa sin instalaciones: [PWABuilder.com](https://www.pwabuilder.com) genera el APK/AAB desde la URL de tu manifest.
 
+### 📱 Sin barra de direcciones (Digital Asset Links)
+
+Una TWA solo se abre **a pantalla completa** si Chrome verifica el dominio consultando
+`https://USUARIO.github.io/.well-known/assetlinks.json` (**raíz** del host). Si ese archivo
+no responde, la app cae en el *fallback* `customtabs` y se abre como un navegador embebido
+**con la URL arriba**.
+
+Como GitHub Pages de proyecto no publica nada bajo la raíz, este proyecto usa el repositorio
+de sitio de usuario [andreu-marbor.github.io](https://github.com/andreu-marbor/andreu-marbor.github.io)
+(landing + `.well-known/assetlinks.json` con la huella SHA-256 del keystore). Allí está
+documentado cómo dar de alta una app Android nueva.
+
+> ⚠️ Chrome **cachea** la comprobación (también los fallos): si la app sigue mostrando la
+> barra, desinstálala, borra los datos de Chrome y vuelve a instalar la APK.
+
 ## 🧪 Pruebas
 
 ```bash

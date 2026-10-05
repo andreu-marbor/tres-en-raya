@@ -275,6 +275,21 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
   - Si se reescriba el historial, retirar también los SHAs citados en la documentación.
   - GitHub conserva temporalmente los objetos huérfanos hasta su GC; sin SHAs referenciados en ningún sitio público quedan inaccesibles de forma práctica.
 
+### 2026-10-05 — 🔴 INCIDENCIA: la APK abre un navegador embebido con la URL arriba (barra de direcciones)
+
+- **Problema reportado por el usuario:** al ejecutar la APK instalada no se ve como app nativa; parece un navegador con la URL `andreu-marbor.github.io/tres-en-raya/` en la parte superior.
+- **Causa:** la APK es una **TWA** (Trusted Web Activity) y `twa-manifest.json` lleva `"fallbackType": "customtabs"`. Chrome solo la muestra a pantalla completa si verifica **Digital Asset Links** consultando `https://andreu-marbor.github.io/.well-known/assetlinks.json` en la **raíz del host** → devolvía **404** (comprobado). Al fallar la verificación, `LauncherActivity` (androidbrowserhelper) cae al fallback de Custom Tabs, que es literalmente una pestaña de Chrome con barra de direcciones. Agravante: GitHub Pages **de proyecto** no publica nada bajo la raíz del dominio (solo `/tres-en-raya/`), así que desde este repo era **imposible** arreglarlo.
+- **Solución aplicada (sin regenerar la APK):**
+  1. Huellas verificadas: `keytool -list -v` del keystore y `apksigner verify --print-certs` de `app-release-signed.apk` → ambas `c0611f21…f060ec9` ✅.
+  2. Creado el repositorio **`andreu-marbor.github.io`** (<https://github.com/andreu-marbor/andreu-marbor.github.io>), el **sitio de usuario** de GitHub Pages que ocupa la raíz del dominio. **Convive** con los repos de proyecto: cada uno sigue publicando en su subcarpeta y sus workflows no se tocan. Contenido: `.well-known/assetlinks.json` (array con **un bloque por app Android**), `index.html` (landing de portfolio con enlace a la PWA), `README.md` (cómo añadir la siguiente app) y `.nojekyll`.
+  3. **`.nojekyll` fue imprescindible:** sin él, Pages ejecuta **Jekyll**, que **ignora los directorios que empiezan por punto** → `.well-known` no se publicaba y seguía dando 404. Tras añadirlo: `GET /.well-known/assetlinks.json` → **200, `application/json`, sin redirecciones** ✅ · landing `/` → 200 ✅ · `tres-en-raya/` → 200 (intacto) ✅.
+- **Pendiente del usuario (Fase 4):** probar en el móvil → **desinstalar la APK** → **borrar los datos de Chrome** (Chrome cachea la comprobación, **también los fallos**) → instalar de nuevo el `app-release-signed.apk` del release v1.0.0 **sin regenerar** → debe abrir a pantalla completa y sin barra de URL.
+- **Evitar a futuro:**
+  - App Android nueva bajo el mismo host: **añadir su bloque** al array del `assetlinks.json` del repo de la raíz (nueva huella solo si cambia el keystore).
+  - Cambiar la **contraseña** del keystore **no** cambia la huella; un keystore nuevo sí → actualizar el archivo.
+  - Si una app se publica en **otro dominio**, ese dominio necesita su propio `assetlinks.json` (la relación es a nivel de host, no de ruta).
+  - Plan B, solo si lo anterior no basta: `fallbackType: "webview"` + `bubblewrap.cmd build` (oculta la barra, pero la app sale de Chrome y pierde WebAPK y notificaciones delegadas).
+
 **Formato de entrada:**
 
 ```markdown
