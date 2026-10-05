@@ -1,0 +1,171 @@
+/* ============================================================
+   animations.css — Animaciones de juego (game feel)
+   Fase 4: caída de ficha con rebote, línea de victoria,
+   sacudida de empate, pulso de turno y confeti.
+   ============================================================ */
+
+/* --- Ficha: cae con rebote y el trazo se dibuja --- */
+.marca {
+  animation: caer-marca 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes caer-marca {
+  0% {
+    opacity: 0;
+    transform: translateY(-45%) scale(0.5);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* X: las dos líneas se "dibujan" una tras otra */
+.marca-x line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: dibujar var(--dur-marca) ease forwards;
+  animation-delay: 0.2s;
+}
+
+.marca-x line:nth-child(2) {
+  animation-delay: 0.4s;
+}
+
+/* O: el círculo se dibuja de forma circular */
+.marca-o circle {
+  stroke-dasharray: 210;
+  stroke-dashoffset: 210;
+  animation: dibujar calc(var(--dur-marca) * 1.4) ease forwards;
+  animation-delay: 0.2s;
+}
+
+@keyframes dibujar {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --- Entrada de pantalla con fundido --- */
+.pantalla {
+  animation: aparecer-pantalla 0.3s ease both;
+}
+
+@keyframes aparecer-pantalla {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Celda ganadora: pulso suave --- */
+.celda.ganadora {
+  animation: pulso-victoria 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulso-victoria {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.04);
+  }
+}
+
+/* --- Línea de victoria: se dibuja progresivamente --- */
+/* (la transición la dispara game.ts fijando stroke-dashoffset a 0) */
+.linea-victoria line {
+  transition: stroke-dashoffset 0.7s ease 0.35s;
+}
+
+/* --- Sacudida al empatar --- */
+.sacudir {
+  animation: sacudida 0.45s ease both;
+}
+
+@keyframes sacudida {
+  10%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  80% {
+    transform: translateX(4px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-7px);
+  }
+  40%,
+  60% {
+    transform: translateX(7px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* --- Indicador de turno: pequeño pulso al actualizarse --- */
+.estado-pulso {
+  animation: pulso-estado 0.3s ease;
+}
+
+@keyframes pulso-estado {
+  from {
+    opacity: 0.3;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- Tarjeta de resultado: entrada con rebote --- */
+.tarjeta {
+  animation: entrar-carta 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes entrar-carta {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* --- Confeti de victoria --- */
+.confeti {
+  position: fixed;
+  top: -18px;
+  z-index: 30;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  pointer-events: none;
+  animation-name: caer-confeti;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes caer-confeti {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  100% {
+    opacity: 0.85;
+    transform: translate3d(var(--deriva, 0), 105vh, 0) rotate(var(--giro, 360deg));
+  }
+}

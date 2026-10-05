@@ -1,0 +1,451 @@
+/* ============================================================
+   base.css — Variables de tema y estilos base
+   TODOS los colores/tipografía vía variables para poder
+   cambiar de tema sin tocar lógica (ver PLAN.md §6).
+   ============================================================ */
+
+/* --- Tema claro (minimalista, base por defecto) --- */
+:root,
+[data-theme='claro'] {
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --text-suave: #6b7280;
+  --linea: #e7e5e1;
+  --sombra: rgba(0, 0, 0, 0.07);
+
+  --accent: #e63946; /* color de X */
+  --accent2: #457b9d; /* color de O */
+  --victoria: #2a9d8f; /* resaltado de línea ganadora */
+
+  --radio: 18px;
+  --radio-pequeno: 12px;
+  --fuente-sistema:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --fuente-titulos: 'Georgia', 'Times New Roman', serif;
+
+  --grosor-marca: 9; /* grosor del trazo SVG (unidades viewBox) */
+  --dur-marca: 0.35s;
+}
+
+/* --- Reset suave --- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--fuente-sistema);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+#app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* --- Contenedor de pantalla --- */
+.pantalla {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  /* 24px + área segura (muesca/notch en móviles) */
+  padding:
+    max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  overflow-y: auto;
+}
+
+/* --- Menú --- */
+.titulo {
+  font-family: var(--fuente-titulos);
+  font-size: clamp(2.4rem, 10vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  margin: 0;
+  text-align: center;
+}
+
+.subtitulo {
+  color: var(--text-suave);
+  font-size: 1rem;
+  margin: -12px 0 0;
+  text-align: center;
+}
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  min-width: 220px;
+  padding: 14px 28px;
+  border-radius: var(--radio);
+  background: var(--surface);
+  border: 1px solid var(--linea);
+  box-shadow: 0 4px 14px var(--sombra);
+  font-size: 1.05rem;
+  font-weight: 600;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.boton:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 6px var(--sombra);
+}
+
+.boton--principal {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+}
+
+.boton--sutil {
+  min-width: 0;
+  min-height: 44px;
+  box-shadow: none;
+  font-weight: 500;
+  color: var(--text-suave);
+}
+
+.lista-botones {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+}
+
+/* --- Cabecera de partida --- */
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 360px;
+}
+
+.cabecera h2 {
+  font-family: var(--fuente-titulos);
+  font-weight: 400;
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.boton-icono {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radio-pequeno);
+  background: var(--surface);
+  border: 1px solid var(--linea);
+  font-size: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.boton-icono:active {
+  transform: scale(0.92);
+}
+
+/* --- Indicador de turno / estado --- */
+.estado {
+  min-height: 1.5em;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-suave);
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.estado[data-activo='X'] {
+  color: var(--accent);
+}
+
+.estado[data-activo='O'] {
+  color: var(--accent2);
+}
+
+/* --- Tablero 3×3 --- */
+.tablero {
+  position: relative; /* ancla para la línea de victoria */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 10px;
+  background: var(--linea);
+  border-radius: var(--radio);
+  box-shadow: 0 10px 30px var(--sombra);
+}
+
+/* Las filas (role=row) no crean caja: los hijos van directos al grid */
+.tablero [role='row'] {
+  display: contents;
+}
+
+/* Línea que une la combinación ganadora (se dibuja al finalizar) */
+.linea-victoria {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.linea-victoria line {
+  stroke: var(--victoria);
+  stroke-width: 6;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.celda {
+  /* Limitado también por el alto: en horizontal no desborda */
+  width: clamp(56px, min(24vw, 26vh), 96px);
+  height: clamp(56px, min(24vw, 26vh), 96px);
+  background: var(--surface);
+  border-radius: var(--radio-pequeno);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s ease;
+}
+
+.celda:disabled {
+  cursor: default;
+}
+
+/* Solo ratón: en táctil el hover "se queda pegado" */
+@media (hover: hover) and (pointer: fine) {
+  .celda:not(:disabled):hover {
+    background: color-mix(in srgb, var(--surface) 88%, var(--text));
+  }
+}
+
+.celda.ganadora {
+  background: color-mix(in srgb, var(--surface) 75%, var(--victoria));
+}
+
+/* --- Marcas X / O (SVG) --- */
+.marca {
+  width: 62%;
+  height: 62%;
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: var(--grosor-marca);
+}
+
+.marca-x {
+  stroke: var(--accent);
+}
+
+.marca-o {
+  stroke: var(--accent2);
+}
+
+/* --- Marcador X / O / empates --- */
+.marcador {
+  display: flex;
+  gap: 18px;
+  min-height: 44px; /* objetivo táctil mínimo */
+  align-items: center;
+  font-size: 0.95rem;
+  color: var(--text-suave);
+  padding: 8px 16px;
+  background: var(--surface);
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.marcador-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.marcador b {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.marcador-x {
+  color: var(--accent);
+}
+
+.marcador-o {
+  color: var(--accent2);
+}
+
+/* --- Superposición de resultado --- */
+.superposicion {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.tarjeta {
+  width: min(340px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 32px 28px;
+  background: var(--surface);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio);
+  box-shadow: 0 24px 60px var(--sombra);
+  text-align: center;
+}
+
+.tarjeta-titulo {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+  font-size: 1.8rem;
+  font-weight: 400;
+}
+
+.tarjeta-titulo[data-activo='X'] {
+  color: var(--accent);
+}
+
+.tarjeta-titulo[data-activo='O'] {
+  color: var(--accent2);
+}
+
+/* --- Fila de ajustes rápidos: idioma + sonido --- */
+.fila-ajustes {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- Selector de idioma (ES · VA · EN) --- */
+.selector-idioma {
+  display: flex;
+  gap: 8px;
+}
+
+.boton-idioma {
+  min-width: 48px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--linea);
+  background: var(--surface);
+  color: var(--text-suave);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.boton-idioma:active {
+  transform: scale(0.93);
+}
+
+.boton-idioma.activo {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+/* --- Pie / ayuda --- */
+.ayuda {
+  color: var(--text-suave);
+  font-size: 0.85rem;
+  text-align: center;
+  margin: 0;
+}
+
+/* --- Foco visible para navegación por teclado --- */
+button:focus-visible,
+.marcador:focus-visible {
+  outline: 3px solid var(--victoria);
+  outline-offset: 3px;
+}
+
+/* --- Pantallas bajas (móvil en horizontal) --- */
+@media (max-height: 620px) {
+  .pantalla {
+    gap: 12px;
+  }
+  .titulo {
+    font-size: clamp(1.7rem, 7vh, 2.4rem);
+  }
+  .subtitulo,
+  .ayuda {
+    display: none;
+  }
+  .estado {
+    font-size: 1rem;
+  }
+  .cabecera h2 {
+    font-size: 1.05rem;
+  }
+  .marcador {
+    min-height: 40px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    gap: 14px;
+  }
+  .boton {
+    min-height: 46px;
+    padding: 10px 22px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
