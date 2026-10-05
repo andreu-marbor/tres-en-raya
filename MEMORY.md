@@ -1,0 +1,163 @@
+# MEMORY.md — Memoria del proyecto
+
+Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y **estado de las fases**.
+
+> Este archivo se actualiza con cada cambio relevante. Las entradas son aditivas: lo más reciente al final de cada sección.
+
+---
+
+## 📍 Estado actual de las fases
+
+| Fase | Descripción | Estado |
+|---|---|---|
+| 1 | Núcleo jugable (tablero, victoria/empate, 2 jugadores) | ✅ Completada |
+| 2 | Pantallas + vs CPU (minimax) | ✅ Completada |
+| 3 | i18n (es / ca / en) | ✅ Completada |
+| 4 | Pulido visual y sonido | ✅ Completada |
+| 5 | Responsive y accesibilidad | ✅ Completada |
+| 6 | Publicación (PWA + APK) | 🟡 PWA y README ✅ · APK pendiente de prerrequisitos (JDK, Bubblewrap, hosting HTTPS) |
+
+---
+
+## 📝 Registro de cambios
+
+### 2026-10-05 — Creación de la documentación inicial
+- Creado `PLAN.md` con el plan completo del proyecto (fases, stack, alcance).
+- Creado `AGENTS.md` con información del proyecto para agentes.
+- Creado `MEMORY.md` (este archivo).
+- Decisiones cerradas: Vite + TypeScript + DOM/CSS, modo local y vs CPU, idiomas es/va/en, estética minimalista claro con arquitectura de temas por variables CSS.
+
+### 2026-10-05 — Fase 1: núcleo jugable completado
+- Creada la estructura base del proyecto: `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`.
+- `src/game/board.ts`: estado del tablero 3×3 (crear, marcar, casillas libres, contrario).
+- `src/game/rules.ts`: 8 líneas ganadoras, detección de victoria y empate.
+- `src/i18n/index.ts` + `src/i18n/es.json`: sistema de traducción `t('clave', params)` con detección de idioma (localStorage → navigator → 'es'). Solo `es` registrado de momento; `ca` y `en` llegan en Fase 3.
+- `src/ui/menu.ts`: pantalla de inicio (Jugar / 2 jugadores).
+- `src/ui/game.ts`: tablero accesible (role=grid, aria-live en el estado), turno alternado, resaltado de línea ganadora, botones revancha/reiniciar/volver.
+- `src/styles/base.css`: **tema claro con todas las variables CSS** (`--bg`, `--accent` para X, `--accent2` para O, etc.) — arquitectura de temas lista para futuros cambios (`data-theme`).
+- `src/styles/animations.css`: X y O se "dibujan" con `stroke-dasharray`, fundido de pantalla, pulso en casilla ganadora, `prefers-reduced-motion` respetado.
+- Router sencillo en `main.ts`: menú ⇄ partida.
+- **Verificado:** `npm run build` (tsc + vite) sin errores y servidor dev responde HTTP 200.
+- *Nota: se adelantó una versión mínima de i18n a la Fase 3 para no hardcodear textos desde el inicio (convención del proyecto).*
+
+### 2026-10-05 — Fase 2: pantallas, marcador y CPU
+- `src/persistencia.ts`: acceso **centralizado** a `localStorage` (leer/guardar texto y JSON con tolerancia a errores). El i18n ahora lo usa también.
+- `src/game/score.ts`: marcador X/O/empates con persistencia (`registrarResultado`, `reiniciarMarcador`, `htmlMarcador`). Clic en el marcador lo reinicia.
+- `src/game/ai.ts`: **minimax con poda alfa-beta**. Dificultades: `normal` (invencible) y `facil` (75 % aleatorio + 25 % óptimo).
+- `src/ui/menu.ts`: flujo de 2 pasos → elegir modo (CPU / 2 jugadores) → elegir dificultad. Exporta `OpcionesPartida`.
+- `src/ui/result.ts`: superposición de fin de partida (título, marcador, revancha/menú) con foco para accesibilidad.
+- `src/ui/game.ts`: modo CPU (humano = X, CPU = O con retraso de 450 ms y estado "pensando…"), marcador visible, gestión de disponibilidad de casillas.
+- CSS: estilos de `.marcador`, `.superposicion`, `.tarjeta` y animación de entrada con rebote.
+- **Pruebas:** creado `pruebas/logica.ts` (script `npm.cmd run prueba`) — verifica reglas, que la CPU difícil **nunca pierde** (500+500 partidas), que minimax vs minimax siempre empata y que la CPU fácil sí pierde a veces. Todas ✅.
+- **Verificado:** `npm.cmd run build` sin errores.
+
+### 2026-10-05 — Fase 3: i18n completo (es · ca · en)
+- Creados `src/i18n/ca.json` (valencià) y `src/i18n/en.json` (english): 26 claves por idioma, traducciones revisadas ("Tres en ratlla", "Tic-tac-toe"...).
+- `src/i18n/index.ts`: carga los 3 JSON directamente (`recursos` tipado completo), añade **`onCambioIdioma()`** (suscripción de repintado), `aplicarIdiomaInicial()` y `CODIGOS` (`ES`/`VA`/`EN` — VA para valencià). Eliminado `registrarIdioma` (ya no hacía falta).
+- `src/ui/lang.ts`: selector de idioma reutilizable (`crearSelectorIdioma`), botones-pastilla con `aria-pressed` y nombre completo en `title`.
+- `src/ui/menu.ts`: selector en ambos pasos; al cambiar de idioma **se repinta el paso actual sin retroceder** (variable `paso`).
+- `src/ui/game.ts`: selector visible durante la partida; `repintarTextos()` actualiza cabecera, aria-labels de las 9 casillas, marcador, estado del turno y la superposición de resultado **sin perder la partida en curso** (se guarda `resultadoActual`).
+- `src/main.ts`: `document.title` cambia con el idioma vía `onCambioIdioma`.
+- Corregido el único texto hardcodeado que quedaba: "X empieza siempre" → clave `menu.hint` (revisión completa con grep: 0 textos visibles fuera de `t()`).
+- CSS: `.selector-idioma` y `.boton-idioma` (targets de 44 px, estado activo resaltado).
+- **Pruebas:** nuevo `pruebas/i18n.ts` (`npm.cmd run prueba:i18n`): paridad de claves, textos vacíos, marcadores `{param}` idénticos y claves críticas. Las 8 comprobaciones ✅.
+- **Verificado:** `npm.cmd run build` ✅ y `npm.cmd run prueba` ✅ (lógica + i18n).
+
+### 2026-10-05 — Fase 4: visual y "game feel"
+- `src/efectos.ts` (nuevo): motor de **sonido WebAudio** con tonos generados (cero assets): `marcarX` (660 Hz), `marcarO` (523 Hz), `ui`, fanfarria de victoria (Do–Mi–Sol–Do) y tono descendente de empate. **Vibración háptica** (`navigator.vibrate`, con feature-detection), `prefiereMovimientoReducido()` y **botón 🔊/🔇** persistido (`localStorage 'sonido'`) que se repinta solo al cambiar de idioma (suscripción a `onCambioIdioma`).
+- `src/ui/confeti.ts` (nuevo): confeti DOM con piezas aleatorias (color, deriva, giro, retardo); se omite con `prefers-reduced-motion`; limpieza automática a los 4,2 s.
+- **Animaciones** (`animations.css`): ficha que **cae con rebote** (`cubic-bezier(0.34,1.56,0.64,1)`) + trazo dibujado; **línea de victoria trazada progresivamente**; **sacudida del tablero en empate**; **pulso del indicador de turno** en cada cambio; tarjeta de resultado con rebote.
+- **Línea de victoria** (`game.ts`): SVG superpuesto al tablero calculando con `getBoundingClientRect` los centros de las 3 casillas; `stroke-dasharray` + reflow forzado + transición CSS → trazo animado de 0,7 s.
+- Integración en partida: sonido + vibración al marcar, sonidos de fin (victoria/empate + confeti/sacudida), `ui` en botones (revancha, menú, reiniciar, volver, reset del marcador).
+- Fila de ajustes `.fila-ajustes` (idioma + sonido) visible en menú y partida.
+- Nueva clave `sound.label` en los 3 idiomas (27 claves por idioma).
+- **Verificado:** `npm.cmd run build` ✅ (20 módulos) y `npm.cmd run prueba` ✅ (lógica + i18n con la nueva clave).
+
+### 2026-10-05 — Fase 5: responsive y accesibilidad
+- **ARIA completo del tablero**: estructura `role="grid"` con `role="row"` reales (filas con `display: contents` para no romper el CSS grid) y `role="gridcell"`.
+- **Etiquetas de casilla con contenido**: `aria-label` = "Casilla 5, X" (se actualiza al marcar, al reiniciar y al cambiar de idioma mediante `etiquetaCelda()`).
+- **Navegación por teclado**: flechas ↑↓←→ entre casillas (patrón ARIA grid), `Home`/`End` para primera/última; Tab/Enter ya funcionaban por ser `<button>`.
+- **Foco**: `:focus-visible` con contorno de 3 px (color `--victoria`) en todos los botones; tras una revancha el foco vuelve a la casilla 1.
+- **Área segura (notch)**: padding con `env(safe-area-inset-*)` en `.pantalla` (el `viewport-fit=cover` ya estaba en el HTML).
+- **Objetivos táctiles ≥44 px**: revisión completa — celdas ≥56 px, botones 46-52 px, iconos 44 px, pastillas de idioma/sonido 44 px, y `.marcador` ahora con `min-height: 44px`.
+- **Horizontal (móvil acostado)**: celdas limitadas también por alto (`min(24vw, 26vh)`) y media query `max-height: 620px` que compacta gaps, oculta subtítulo/ayuda y reduce tipografías.
+- **Táctil**: hover solo en dispositivos con puntero fino (`@media (hover: hover) and (pointer: fine)`), evitando el hover "pegado" en pantallas táctiles.
+- **Scroll**: `.pantalla` con `overflow-y: auto` para pantallas muy bajas.
+- `prefers-reduced-motion` ya cubierto en CSS global + comprobaciones JS (confeti, sacudida).
+- **Incidencia:** error TS2339 (`Property 'key' does not exist on type 'Event'`) al añadir el listener de teclado desde `querySelector('#tablero')` sin genérico → solucionado con `querySelector<HTMLElement>(...)`.
+- **Verificado:** `npm.cmd run build` ✅ y `npm.cmd run prueba` ✅. Servidor dev respondiendo HTTP 200 (LAN: `http://192.168.1.49:5173` para probar en el móvil).
+
+### 2026-10-05 — Corregido el selector de idioma en partida (incidencia del usuario)
+- Reescrito `src/ui/lang.ts`: registro de **selectores vivos** + suscripción a `onCambioIdioma()` → al cambiar de idioma se repinta la marca `.activo`, `aria-pressed`, `title`/`aria-label` y el código visible (`ES · VA · EN`) **también en la pantalla de partida**, donde la vista no se reconstruye. Los selectores destruidos se purgan por `isConnected`.
+- Mientras se corregía, TypeScript detectó que `CODIGOS` no se usaba: faltaba asignar `boton.textContent` en el repintado (habría dado botones sin texto); solucionado en el mismo cambio.
+- **Verificado:** `npm.cmd run build` ✅ y `npm.cmd run prueba` ✅ (21 comprobaciones). Servidor detenido tras las pruebas del usuario.
+
+### 2026-10-05 — Regresión corregida: clase base `boton-idioma` restaurada
+- En `src/ui/lang.ts` se restauró `boton.className = 'boton-idioma'` al crear los botones del selector (faltaba tras el refactor y rompía `.boton-idioma.activo`, que exige ambas clases).
+- Revisado el resto de UI: el botón de sonido en `efectos.ts` sí conserva `'boton-idioma boton-sonido'` ✅.
+- **Verificado:** `npm.cmd run build` ✅ + `npm.cmd run prueba` ✅ + servidor dev HTTP 200 con HMR aplicando el cambio en caliente.
+
+### 2026-10-05 — Nueva funcionalidad: "Ver tablero" en el menú de fin de partida
+- **Problema planteado por el usuario:** al perder, la superposición de resultado tapaba el tablero y no se podía ver la última jugada de la CPU/contrincante.
+- **Solución:**
+  - `result.ts`: nuevo botón **"👁 Ver tablero"** en la tarjeta de resultado (entre *Revancha* y *Menú*) que cierra la superposición dejando el tablero visible (con la línea y las casillas ganadoras resaltadas) — acción `onVerTablero`.
+  - `game.ts`: nuevo botón flotante **"🏁 Ver resultado"** (`#btn-ver-resultado`, oculto por defecto) que reabre la tarjeta; estado `overlayAbierto` como fuente de verdad (antes `resultadoActual`); al repintar por idioma **solo se reabre la tarjeta si estaba visible** (así cambiar de idioma con el tablero destapado no lo vuelve a tapar).
+  - El juego sigue "terminado": las casillas permanecen deshabilitadas, solo se mira.
+  - Focus management: al destapar, el foco va al botón "Ver resultado"; al reabrir, a "Revancha".
+- Nuevas claves i18n en los 3 idiomas (29 claves): `result.showBoard` ("Ver tablero" / "Veure el tauler" / "View board") y `result.show` — añadidas también a las claves críticas de `pruebas/i18n.ts`.
+- **Verificado:** `npm.cmd run build` ✅ + `npm.cmd run prueba` ✅ (29 claves por idioma) + servidor HTTP 200 (HMR activo).
+
+### 2026-10-05 — Fase 6 (parte 1): PWA instalable + README
+- **Iconos:** SVG dibujados a mano (`public/icons/icono.svg` + `icono-maskable.svg`, colores del tema: fondo hueso, X `#e63946`, O `#457b9d`, cuadrícula) y script `scripts/generar-iconos.mjs` con **`sharp`** (nuevo devDependency) que genera `icono-192/512`, `maskable-192/512`, `apple-touch-icon` y `favicon.svg`. Comando: `npm.cmd run iconos`. Icono revisado visualmente ✅.
+- **`public/manifest.json`**: name/short_name, `start_url`/`scope` relativos (`./`), `display: standalone`, colores del tema, 5 iconos (`any` + `maskable` + SVG).
+- **`public/sw.js`**: service worker con estrategia **red primero y caché como respaldo** (assets con hash no se obsolecen; offline tras la primera visita), limpieza de versiones antiguas en `activate`.
+- **Registro del SW** en `main.ts` solo en producción (`import.meta.env.PROD`) — creado `src/vite-env.d.ts` con `/// <reference types="vite/client" />` (faltaban los tipos: error TS2339 `import.meta.env`).
+- **`index.html`**: manifest, favicon SVG, apple-touch-icon, metas de iOS.
+- **`README.md`**: README de portfolio completo (características, badges, capturas, tabla de stack, comandos, cómo probar la PWA, guía Bubblewrap/APK paso a paso, pruebas, estructura, roadmap, licencia). Creado `docs/capturas/README.md` con la guía para grabar GIFs (pendiente de capturar imágenes por el usuario).
+- **Verificado:** `npm.cmd run build` ✅ · `npm.cmd run preview` ✅ HTTP 200 en `/`, `/manifest.json`, `/sw.js` e iconos.
+- **Pendiente (Fase 6 parte 2) — APK:** el entorno **no tiene** Java, Bubblewrap ni Android SDK (`java`, `bubblewrap`, `ANDROID_HOME` comprobados → no instalados), y la TWA exige hosting **HTTPS**. Guía completa escrita en el README; decisión del usuario sobre instalar prerrequisitos y publicar la web.
+
+---
+
+## 🐛 Problemas encontrados y soluciones
+
+### 2026-10-05 — `npm` falla en PowerShell por política de ejecución
+- **Problema:** ejecutar `npm` en PowerShell lanza `UnauthorizedAccessException`: "No se puede cargar el archivo npm.ps1 porque la ejecución de scripts está deshabilitada en este sistema".
+- **Solución:** usar **`npm.cmd`** en lugar de `npm` (`npm.cmd install`, `npm.cmd run dev`, `npm.cmd run build`). Node.js funciona correctamente con `node`.
+- **Evitar a futuro:** en todos los comandos de este proyecto usar la variante `.cmd`. Alternativa permanente: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (cambia configuración del usuario, revisar antes).
+
+### 2026-10-05 — Minimax lento: el test de 2000 partidas superaba el timeout
+- **Problema:** ejecutar 2000 partidas de prueba contra la CPU no terminaba en 60 s; el minimax sin poda exploraba todo el árbol (~9! ramas).
+- **Solución:** añadir **poda alfa-beta** en `src/game/ai.ts` (`limiteAlfa`/`limiteBeta` + `break` cuando se cruzan) y reducir las iteraciones del test a 500 partidas por escenario. Con poda, todas las pruebas terminan en segundos.
+- **Evitar a futuro:** cualquier búsqueda exhaustiva en este proyecto debe llevar poda; si un test tarda >30 s, reducir iteraciones antes que esperar.
+
+### 2026-10-05 — Doble declaración de `empates` en pruebas
+- **Problema:** esbuild daba error `The symbol "empates" has already been declared` al declarar `let empates` dos veces en el ámbito de módulo de `pruebas/logica.ts`.
+- **Solución:** reutilizar la variable declarada (`empates = 0`) en lugar de volver a declararla.
+- **Evitar a futuro:** en scripts de prueba de un solo archivo, declarar contadores al inicio; esbuild falla con declaraciones duplicadas aunque estén separadas por bloques `{}` sin llaves de módulo.
+
+### 2026-10-05 — Servidor dev cortado por timeout en modo background
+- **Problema:** el comando `npm.cmd run dev` lanzado en segundo plano llevaba `timeout: 120000`; al llegar al límite el shell lo mató y el servidor dejó de responder (el usuario pensaba que estaba probando en el móvil y ya no podía conectarse).
+- **Solución:** relanzar el comando **sin parámetro `timeout`** (en background no debe llevarlo).
+- **Evitar a futuro:** los servidores de desarrollo siempre en background y sin timeout; verificar con un `Invoke-WebRequest` a `localhost:5173` tras arrancar.
+
+### 2026-10-05 — 🔴 INCIDENCIA: en partida, cambiar de idioma no actualiza el botón del idioma seleccionado
+- **Problema reportado por el usuario:** si se cambia el idioma **en mitad de partida** (no en el menú), el texto de la pantalla sí se traduce, pero el botón del selector (`ES · VA · EN`) **sigue resaltando el idioma anterior** (clase `.activo` / `aria-pressed` desactualizados).
+- **Causa:** en `src/ui/lang.ts` el estado visual del selector se pintaba **una sola vez** al crearlo. En el menú no se notaba porque `repintar()` reconstruye el `innerHTML` completo (botones nuevos con el estado correcto); en la partida `repintarTextos()` solo actualiza textos y **no toca el selector**, que además sigue conectado al DOM con su estado viejo.
+- **Solución:** `lang.ts` mantiene un registro de selectores vivos y se suscribe a `onCambioIdioma()` (mismo patrón que el botón de sonido en `efectos.ts`): al cambiar de idioma repinta `aria-label`/`title` del grupo y, en cada botón, la clase `.activo`, `aria-pressed` y el nombre del idioma; los selectores destruidos se eliminan del registro (`isConnected`).
+- **Evitar a futuro:** todo componente con estado visual derivado del idioma debe suscribirse a `onCambioIdioma()`; si el componente se reconstruye con `innerHTML`, limpiar el registro por `isConnected`.
+
+### 2026-10-05 — 🔴 INCIDENCIA 2: ningún idioma se resalta nunca (regresión tras la corrección anterior)
+- **Problema reportado por el usuario:** tras el arreglo anterior, ahora **en ningún sitio** (ni menú ni partida) se resalta el idioma seleccionado; además los botones `ES · VA · EN` se ven sin estilo.
+- **Causa:** al reescribir `src/ui/lang.ts` se dejó de asignar la clase base **`boton-idioma`** al crear cada botón (`boton.className = 'boton-idioma'`). `pintarSelector()` sí añadía la clase `.activo`, pero la regla CSS es `.boton-idioma.activo` (requiere **ambas** clases), así que nunca coincidía; y sin la clase base tampoco aplicaban anchos, bordes ni `min-height: 44px`.
+- **Solución:** restaurar `boton.className = 'boton-idioma'` en el momento de crear el botón (`.activo` lo sigue alternando `pintarSelector`). El servidor dev con HMR aplica el cambio en caliente.
+- **Evitar a futuro:** al reescribir un componente, comparar siempre con la versión anterior qué clases/atributos CSS se asignaban en la creación; las clases que aparecen en el CSS como `.clase-base.modificador` necesitan que **ambas** estén en el DOM. Añadir una comprobación visual tras cada refactor de UI, no solo `build` + pruebas de lógica (las pruebas actuales no cubren el DOM).
+
+**Formato de entrada:**
+
+```markdown
+### [fecha] — Título breve del problema
+- **Problema:** qué fallaba o qué dificultad apareció.
+- **Solución:** cómo se resolvió (con código o pasos si aplica).
+- **Evitar a futuro:** (opcional) qué hacer para que no vuelva a ocurrir.
+```

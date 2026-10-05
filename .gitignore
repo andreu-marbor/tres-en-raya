@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+
+# Build de producción
+dist/
+
+# Salidas temporales de las pruebas
+node_modules/.tmp/
+
+# Editor / sistema
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+
+# Secrets de Bubblewrap / Android (NO subirlos)
+bubblewrapConfig/
+*.keystore
+*.p12
+*.pepk
+
+# Variables locales
+.env
+.env.local
