@@ -15,7 +15,7 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
 | 3 | i18n (es / ca / en) | ✅ Completada |
 | 4 | Pulido visual y sonido | ✅ Completada |
 | 5 | Responsive y accesibilidad | ✅ Completada |
-| 6 | Publicación (PWA + APK) | ✅ Completada (PWA en GitHub Pages + APK/AAB firmados; capturas README pendientes del usuario) |
+| 6 | Publicación (PWA + APK) | ✅ Completada (PWA en GitHub Pages + APK/AAB firmados con el keystore nuevo y **APK validada en dispositivo el 2026-10-09**; capturas README pendientes del usuario) |
 
 ---
 
@@ -237,6 +237,16 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
 - **`assetlinks.json` del repo `andreu-marbor.github.io` actualizado en `main`:** la sentencia de `com.andreumarbor.tresenraya` pasa de `C0:61:1F…` a `2F:63:CD…` (la de `quizophistoria`, `B7:66:6B…`, intacta) → workflow `pages build and deployment` en verde y `GET /.well-known/assetlinks.json` ya devuelve la huella nueva ✅. **Sin este paso la app Android vuelve a enseñar la barra de URL.**
 - **Cambios en el proyecto regenerado:** `manifest-checksum.txt` (hash recalculado), `app/src/main/res/xml/shortcuts.xml` (ahora con la cabecera de licencia de Google) y normalización de finales de línea; el resto del árbol generado, idéntico al anterior.
 - **Evitar a futuro:** `bubblewrap build` **promptea la contraseña** si faltan las dos variables de entorno y `apksigner.bat` **exige `JAVA_HOME`** (ambas por sesión) → ver las incidencias de abajo.
+
+### 2026-10-09 — ✅ APK nueva instalada y validada en dispositivo (confirmación del usuario)
+
+- **Confirmación del usuario:** «Aplicación instalada y validada» → la APK reconstruida con el keystore nuevo (`3enraya-2.apk` en `Descargas`, `versionCode 2`) está **probada en el dispositivo real**.
+- **Qué cierra esto:** el paso manual que quedaba pendiente tras el cambio de firma — probar en el móvil la APK nueva (mismo protocolo que el de la incidencia de la barra de URL: desinstalar la anterior si estaba instalada, instalar la nueva y comprobarla). Con ello queda validado de punta a punta el flujo de la reconstrucción: **keystore nuevo `2F:63:CD…` → `bubblewrap.cmd build` → instalación → `assetlinks.json` con la huella nueva publicado en Pages**.
+- **Pendientes que siguen abiertos (ninguno bloqueante):**
+  1. **Respaldo (lo más urgente):** copiar `respaldo-keystore-tres-en-raya.zip` de `Descargas` al **otro PC** y borrarlo de este — es lo único que guarda la clave de firma.
+  2. **Release:** el `v1.0.0` del repo sigue adjuntando la APK vieja (firmada con la clave perdida) → publicar una release nueva con `app-release-signed.apk` + `app-release-bundle.aab` si se quiere distribuir.
+  3. **Capturas del README** (pendiente desde la Fase 6).
+- **Estado de la Fase 6:** ✅ PWA en GitHub Pages + APK/AAB firmados **y APK validada en dispositivo**; solo queda lo opcional de arriba.
 
 ---
 
