@@ -224,6 +224,20 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
   3. antes de cada push: `git grep -i "password\|passwd\|secret\|token"` como red de seguridad.
 - **Incidencia menor hermana (mismo intento de verificación):** Gradle falló con `AccessDeniedException` borrando `app\build\...\zip-cache` → lock transitorio (daemon de Gradle detenido con `gradlew --stop` + OneDrive sincronizando). Solución: `Remove-Item -Recurse -Force app\build` y relanzar. **Refuerza la recomendación de mover el proyecto fuera de OneDrive.**
 
+### 2026-10-09 — APK reconstruida de 0 con keystore nuevo (el original había desaparecido)
+
+- **Petición del usuario:** reconstruir la APK desde cero «con la misma forma que en `../quiz-historia`»: borrar el proyecto Android generado → `bubblewrap.cmd update --skipVersionUpgrade` → `local.properties` → `bubblewrap.cmd build` → verificar con `apksigner`.
+- **Hallazgo previo:** **no existían** ni `./android.keystore` ni `%USERPROFILE%\.bubblewrap\keystore-pass.txt` (búsqueda en Documents, Descargas, OneDrive, Escritorio, Temp y `git log --all -- '*keystore*'` → 0 resultados: la clave nunca estuvo versionada). Imposible firmar con la clave original `c0611f21…f060ec9` → keystore nuevo (incidencia en «Problemas encontrados y soluciones»).
+- **Keystore nuevo** (misma fórmula que quiz-historia): `keytool -genkeypair` con el JDK de Bubblewrap → `./android.keystore` (2.682 B, ignorado por `.gitignore:18`), alias `android`, RSA-2048 / SHA256withRSA, validez **10.000 días (hasta el 24 de febrero de 2054)**, DN `CN=andreu-marbor, OU=Portfolio, O=GitHub, C=ES`. Contraseña de **36 caracteres hexadecimales generada en runtime** (nunca impresa en consola ni escrita en ficheros versionados) en `%USERPROFILE%\.bubblewrap\keystore-pass.txt`.
+  - **Huella SHA-256 nueva: `2F:63:CD:99:D2:CA:E2:A2:9B:3B:23:47:2D:ED:EA:CD:04:7C:47:E4:2E:E5:D2:3D:E9:A3:5B:69:FB:16:D2:29`** — sustituye a `C0:61:1F…` en `assetlinks.json` y en toda la documentación.
+- **Respaldo en `Descargas`** (para copiarlo al otro PC, igual que en quiz-historia): `respaldo-keystore-tres-en-raya.zip` (keystore + contraseña + `LEEME-respaldo.txt` con huella, pasos de restauración y nota de Play App Signing), `android-tres-en-raya.keystore` y `3enraya-2.apk`.
+- **Reconstrucción de 0:** borrado el proyecto Android generado (`app/`, `gradle/`, `build.gradle`, `settings.gradle`, `gradle.properties`, `gradlew`, `gradlew.bat`, `manifest-checksum.txt`, `store_icon.png`) → `bubblewrap.cmd doctor` ✅ → **`bubblewrap.cmd update --skipVersionUpgrade`** («Generating Android Project. Project updated successfully.») → `local.properties` recreado a mano (`sdk.dir=…/Android/Sdk`, gitignored) → **`bubblewrap.cmd build`** con `BUBBLEWRAP_KEYSTORE_PASSWORD` / `BUBBLEWRAP_KEY_PASSWORD` → `BUILD_EXIT=0`.
+- **Artefactos:** `app-release-signed.apk` **1.135.044 B** y `app-release-bundle.aab` **1.253.266 B**; `twa-manifest.json` **sin tocar** → `versionCode 2 / versionName "2"`.
+- **Verificación del paquete:** `apksigner verify --print-certs` → `2f63cd99…16d229` = huella del keystore nuevo ✅ · `aapt dump badging` → `com.andreumarbor.tresenraya`, `versionCode='2'`, `versionName='2'`, `sdkVersion:'21'`, etiqueta «3 en raya — Tic-tac-toe», lanzador «3 en raya» ✅.
+- **`assetlinks.json` del repo `andreu-marbor.github.io` actualizado en `main`:** la sentencia de `com.andreumarbor.tresenraya` pasa de `C0:61:1F…` a `2F:63:CD…` (la de `quizophistoria`, `B7:66:6B…`, intacta) → workflow `pages build and deployment` en verde y `GET /.well-known/assetlinks.json` ya devuelve la huella nueva ✅. **Sin este paso la app Android vuelve a enseñar la barra de URL.**
+- **Cambios en el proyecto regenerado:** `manifest-checksum.txt` (hash recalculado), `app/src/main/res/xml/shortcuts.xml` (ahora con la cabecera de licencia de Google) y normalización de finales de línea; el resto del árbol generado, idéntico al anterior.
+- **Evitar a futuro:** `bubblewrap build` **promptea la contraseña** si faltan las dos variables de entorno y `apksigner.bat` **exige `JAVA_HOME`** (ambas por sesión) → ver las incidencias de abajo.
+
 ---
 
 ## 🐛 Problemas encontrados y soluciones
@@ -289,6 +303,24 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
   - Cambiar la **contraseña** del keystore **no** cambia la huella; un keystore nuevo sí → actualizar el archivo.
   - Si una app se publica en **otro dominio**, ese dominio necesita su propio `assetlinks.json` (la relación es a nivel de host, no de ruta).
   - Plan B, solo si lo anterior no basta: `fallbackType: "webview"` + `bubblewrap.cmd build` (oculta la barra, pero la app sale de Chrome y pierde WebAPK y notificaciones delegadas).
+
+### 2026-10-09 — 🔴 INCIDENCIA: keystore y contraseña del proyecto, desaparecidos del equipo
+
+- **Problema:** al querer reconstruir la APK **no estaban** `./android.keystore` ni `%USERPROFILE%\.bubblewrap\keystore-pass.txt`. Búsqueda por todo el perfil (Documents, Descargas, OneDrive, Escritorio, Temp y `%USERPROFILE%\.bubblewrap`) y `git log --all -- '*keystore*'` → **0 resultados**: la clave **nunca estuvo versionada** y la copia local se perdió (la causa no está documentada; solo quedaban el keystore y la contraseña de `quiz-historia`). Consecuencia: ya no era posible firmar nada con la clave `c0611f21…f060ec9` del APK publicado.
+- **Solución:** **keystore nuevo** + contraseña nueva de 36 hex + **huella nueva en `assetlinks.json`** + respaldo en `Descargas` (entrada del 2026-10-09 en «Registro de cambios»).
+- **Consecuencias asumidas:**
+  - El APK nuevo **no se puede instalar encima** del v1.0.0 (firma distinta) → hay que **desinstalar** la app vieja y después instalar el nuevo APK; esa instalación pierde su `localStorage` (marcador).
+  - Todas las menciones a la huella `c0611f21…f060ec9` de las entradas anteriores quedan **obsoletas**.
+- **Evitar a futuro:**
+  - **Copiar `respaldo-keystore-tres-en-raya.zip` al otro PC cuanto antes** y borrarlo de `Descargas` (mismo protocolo que en quiz-historia).
+  - Un keystore solo existe en dos sitios o no existe: `%USERPROFILE%\.bubblewrap\` + una copia **fuera de este PC**. Si se genera uno nuevo, actualizar **de inmediato** `assetlinks.json` y la documentación con la huella nueva.
+  - Antes de un build: `Test-Path .\android.keystore` y `Test-Path "$env:USERPROFILE\.bubblewrap\keystore-pass.txt"` → si falta alguno, **parar y preguntar**; nunca generar una clave de firma sin permiso del usuario.
+
+### 2026-10-09 — `bubblewrap build` promptea la contraseña y `apksigner.bat` exige `JAVA_HOME`
+
+- **Problema 1:** `bubblewrap.cmd build` se quedó en `? Password for the Key Store:` y terminó con `BUILD_EXIT=1` → **no se habían exportado** `BUBBLEWRAP_KEYSTORE_PASSWORD` y `BUBBLEWRAP_KEY_PASSWORD` en esa sesión. *Solución:* leer la contraseña del fichero con `-Raw` (sin imprimirla) y asignar las dos variables **en el mismo comando** antes de invocar `build`; con ellas, sale «Using passwords set in the … environmental variables» y `BUILD_EXIT=0`.
+- **Problema 2:** `apksigner.bat verify --print-certs` falló con `ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH`. *Solución:* fijar `$env:JAVA_HOME = "$env:USERPROFILE\.bubblewrap\jdk\jdk-17.0.20.1+1"` (el `jdkPath` de `%USERPROFILE%\.bubblewrap\config.json`) en la misma sesión antes de llamar a `apksigner`. Gradle no lo necesita: `bubblewrap build` le pasa el JDK él solo.
+- **Evitar a futuro:** las dos cosas son **variables por sesión** (no persisten): encadenarlas en el comando de reconstrucción de `AGENTS.md` en lugar de ejecutarlas por separado. Los `WARNING: META-INF/… not protected by signature` que imprime `apksigner` son informativos de Android Gradle Plugin, no errores.
 
 **Formato de entrada:**
 
