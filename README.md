@@ -139,4 +139,4 @@ src/
 
 ## 📄 Licencia
 
-MIT
+[MIT](./LICENSE) — ver el fichero [LICENSE](./LICENSE)

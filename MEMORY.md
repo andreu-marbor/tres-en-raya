@@ -250,6 +250,18 @@ Registro de **cambios relevantes**, **problemas encontrados y sus soluciones** y
 
 ---
 
+### 2026-10-09 — 📄 Fichero `LICENSE` (MIT) + topics del repositorio · decisión: monetización aplazada
+
+- **Cambio 1:** creado el fichero `LICENSE` con el texto completo MIT. El README ya declaraba `## 📄 Licencia` → `MIT`, pero **el fichero no existía** (`git ls-files | grep -i license` → 0 resultados), o sea que la licencia era solo prosa sin texto legal. Copyright `2026 Andreu Marbor` (primer commit del repo: 2026-10-05). El README ahora enlaza al fichero.
+- **Cambio 2:** añadidos los **topics** al repo de GitHub, que estaban **vacíos** (`gh api repos/andreu-marbor/tres-en-raya --jq .topics` → `[]`), siguiendo el patrón de `quiz-historia` (`history`, `pwa`, `quiz`, `typescript`, `vite`) y adaptados a este proyecto: `android`, `game`, `pwa`, `tictactoe`, `twa`, `typescript`, `vite`. Se aplican con `gh api -X PUT repos/andreu-marbor/tres-en-raya/topics --input -` pasando `{"names":[...]}` (los topics no son ficheros: viven solo en la API de GitHub y **no se versionan**).
+- **Decisión del usuario:** **monetización aplazada** — ni botón de donaciones (Ko-fi) ni venta de la plantilla de momento. Análisis previo por si se retoma:
+  - La política de pagos de Play **exceptúa expresamente** las donaciones de Play Billing (§3.4.2: *"tax exempt donations"*), así que un botón de donación **sí es compatible** con subir la app a Play (zona gris si es donación personal a particular, no a entidad).
+  - El riesgo real para Play era **otro**: enlazar la venta de la plantilla (5 €) **desde dentro del menú** = compra digital fuera de Play Billing → rechazo. Si se retoma, enlace solo en README/landing/itch.io.
+  - Donación o venta: **sin contrapartida dentro de la app**; si se promete algo a cambio, deja de ser donación y pasa a ser compra (IVA, facturas, Play Billing).
+- **Evitar a futuro:** `PUT /repos/{owner}/{repo}/topics` reemplaza la lista completa (no añade): si se amplía, reenviar **todos** los topics en una sola llamada.
+
+---
+
 ## 🐛 Problemas encontrados y soluciones
 
 ### 2026-10-05 — `npm` falla en PowerShell por política de ejecución
